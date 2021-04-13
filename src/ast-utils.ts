@@ -1,36 +1,47 @@
-const isObject = (value) => (!!value) && (typeof value === "object") && !Array.isArray(value)
-export const isAstObject = (value) => isObject(value) && ("concept" in value) && ("settings" in value)
-export const isAstReference = (value) => isObject(value) && ("ref" in value)
+import { AstBaseObject, AstElement, AstObject, AstReference } from "./ast"
+
+const isObject = (value: any) => (!!value) && (typeof value === "object") && !Array.isArray(value)
+
+export function isAstObject(value: any): value is AstObject {
+    return isObject(value) && ("concept" in value) && ("settings" in value)
+}
+
+export function isAstReference(value: any): value is AstReference {
+    return isObject(value) && ("ref" in value)
+}
 
 
 // re-export shortid.generate under a nicer name
 import { generate as newId } from "shortid"
 export { newId }
 
-
-export function withComputedIds(value) {
-    if (isAstObject(value)) {
-        value.id = newId()
-        for (const propertyName in value.settings) {
-            withComputedIds(value.settings[propertyName])
+export function withComputedIds(value: AstBaseObject): AstObject {
+    const ast: AstObject = {
+        id: newId(),
+        concept: value.concept,
+        settings: {},
+    }
+    for (const propertyName in value.settings) {
+        const settingValue = value.settings[propertyName]
+        if (Array.isArray(settingValue)) {
+            ast.settings[propertyName] = settingValue.map(withComputedIds)
+        } else {
+            ast.settings[propertyName] = withComputedIds(settingValue)
         }
-        return value
     }
-    if (Array.isArray(value)) {
-        value.forEach(withComputedIds)
-    }
+    return ast
 }
 
 
 import { observable } from "mobx"
 
-export function asObservable(ast) {
-    const id2ObservableAstObject = {}
-    const refObjectsToFix = []
+export function asObservable(ast: AstElement) {
+    const id2ObservableAstObject: { [id: string]: AstObject } = {}
+    const refObjectsToFix: [string, AstReference][] = []
 
-    function asObservableInternal(value) {
+    function asObservableInternal(value: AstElement) {
         if (isAstObject(value)) {
-            const observableAstObject = observable({
+            const observableAstObject: AstObject = observable.object({
                 id: value.id,
                 concept: value.concept,
                 settings: {}
@@ -42,8 +53,8 @@ export function asObservable(ast) {
             return observableAstObject
         }
         if (isAstReference(value)) {
-            const refObjectToFix = observable({})
-            refObjectsToFix.push([ value.ref.id, refObjectToFix ])
+            const refObjectToFix: AstReference = observable.object({ ref: null})
+            refObjectsToFix.push([ value.ref?.id || "", refObjectToFix ])
             return refObjectToFix
         }
         if (Array.isArray(value)) {
@@ -62,14 +73,14 @@ export function asObservable(ast) {
 }
 
 
-export const newAstObject = (concept, ast) => observable({
+export const newAstObject: (concept: string) => AstObject = (concept) => observable.object({
     id: newId(),
     concept: concept,
     settings: {}
 })
 
 
-export function serialize(value) {
+export function serialize(value: AstElement | undefined) {
     if (isAstObject(value)) {
         const serializedAstObject = {
             id: value.id,
@@ -84,7 +95,7 @@ export function serialize(value) {
     if (isAstReference(value)) {
         // Instead of a reference object, return an object with a 'refId === ref.id':
         return ({
-            refId: value.ref.id
+            refId: value.ref?.id
         })
     }
     if (Array.isArray(value)) {
@@ -94,15 +105,15 @@ export function serialize(value) {
 }
 
 
-const isSerializedAstReference = (value) => isObject(value) && ("refId" in value)
+const isSerializedAstReference = (value: any) => isObject(value) && ("refId" in value)
 
-export function deserialize(serializedAst) {
-    const id2AstObject = {}
-    const referencesToResolve = []
+export function deserialize(serializedAst: any) {
+    const id2AstObject: {[id: string]: AstObject} = {}
+    const referencesToResolve: [string, AstReference][] = []
 
-    function deserializeInternal(value) {
+    function deserializeInternal(value: any) {
         if (isAstObject(value)) {
-            const astObject = {
+            const astObject: AstObject = {
                 id: value.id,
                 concept: value.concept,
                 settings: {}
@@ -114,7 +125,7 @@ export function deserialize(serializedAst) {
             return astObject
         }
         if (isSerializedAstReference(value)) {
-            const refObjectToFix = {}
+            const refObjectToFix: AstReference = { ref: null }
             referencesToResolve.push([ value.refId, refObjectToFix ])
             return refObjectToFix
         }
@@ -134,13 +145,13 @@ export function deserialize(serializedAst) {
 }
 
 
-export function deserializeObservably(serializedAst) {
-    const id2ObservableAstObject = {}
-    const referencesToResolve = []
+export function deserializeObservably(serializedAst: any) {
+    const id2ObservableAstObject: {[id: string]: AstObject} = {}
+    const referencesToResolve: [string, AstReference][] = []
 
-    function deserializeObservablyInternal(value) {
+    function deserializeObservablyInternal(value: any): AstElement {
         if (isAstObject(value)) {
-            const observableAstObject = observable({
+            const observableAstObject: AstObject = observable.object({
                 id: value.id,
                 concept: value.concept,
                 settings: {}
@@ -152,7 +163,7 @@ export function deserializeObservably(serializedAst) {
             return observableAstObject
         }
         if (isSerializedAstReference(value)) {
-            const refObjectToFix = observable({})
+            const refObjectToFix: AstReference = observable.object({ ref: null })
             referencesToResolve.push([ value.refId, refObjectToFix ])
             return refObjectToFix
         }
@@ -172,13 +183,13 @@ export function deserializeObservably(serializedAst) {
 }
 
 
-export function deepCopy(ast) {
-    const id2CopiedObject = {}
-    const referencesToResolve = []
+export function deepCopy(ast: AstElement) {
+    const id2CopiedObject: {[id: string]: AstObject} = {}
+    const referencesToResolve: [string, AstReference][] = []
 
-    function deepCopyInternal(value) {
+    function deepCopyInternal(value: AstElement): AstElement {
         if (isAstObject(value)) {
-            const copiedObject = {
+            const copiedObject: AstObject = {
                 id: value.id,
                 concept: value.concept,
                 settings: {}
@@ -190,8 +201,8 @@ export function deepCopy(ast) {
             return copiedObject
         }
         if (isAstReference(value)) {
-            const refObjectToFix = {}
-            referencesToResolve.push([ value.ref.id, refObjectToFix ])
+            const refObjectToFix: AstReference = { ref: null }
+            referencesToResolve.push([ value.ref?.id || "", refObjectToFix ])
             return refObjectToFix
         }
         if (Array.isArray(value)) {

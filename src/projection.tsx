@@ -3,15 +3,21 @@ import { observer } from "mobx-react"
 import React from "react"
 
 
-import { dataModel, entityKind, issuesForProperty, validate } from "./ast"
+import { AstObject, dataModel, entityKind, Issue, issuesForProperty, validate } from "./ast"
 import { isAstObject, newAstObject } from "./ast-utils"
 import { DataModel, Entity, Relation } from "./concepts"
 import { Kernel, Reference } from "./entity-kinds"
 import { indefiniteArticleFor, withFirstUpper } from "./text-utils"
-import { DropDownValue, TextValue } from "./value-components"
+import { DropDownValue, EditState, TextValue } from "./value-components"
 
+interface EntityRefProps {
+    astObject: AstObject
+    propertyName: string
+    dataModel: AstObject
+    plural: Boolean
+}
 
-const EntityRef = observer(({ astObject, propertyName, dataModel, plural }) => {
+const EntityRef: React.FC<EntityRefProps> = observer(({ astObject, propertyName, dataModel, plural }) => {
     const value = astObject.settings[propertyName]
     return <DropDownValue
         editState={observable({
@@ -25,7 +31,7 @@ const EntityRef = observer(({ astObject, propertyName, dataModel, plural }) => {
             }
         })}
         className="reference"
-        options={dataModel.settings["entities"].map((entity) => ({
+        options={dataModel.settings["entities"].map((entity: AstObject) => ({
             id: entity.id,
             text: entity.settings[plural ? "pluralName" : "singularName"],
             thing: entity
@@ -35,17 +41,26 @@ const EntityRef = observer(({ astObject, propertyName, dataModel, plural }) => {
     />
 })
 
+interface IssueSpanWrapperProps {
+    allIssues: Issue[]
+    propertyName: string
+    children: JSX.Element
+}
 
-const IssueSpanWrapper = observer(({ allIssues, propertyName, children }) => {
+const IssueSpanWrapper: React.FC<IssueSpanWrapperProps> = observer(({ allIssues, propertyName, children }) => {
     const issues = issuesForProperty(allIssues, propertyName)
     return <span className={issues.length > 0 ? "has-issues" : ""} title={issues.map((issue) => issue.message).join("\n")}>{children}</span>
 })
 
+interface ProjectionProps {
+    value?: AstObject
+    ancestors: AstObject[]
+}
 
-export const Projection = observer(({ value, ancestors }) => {
+export const Projection: React.FC<ProjectionProps> = observer(({ value, ancestors }) => {
     if (isAstObject(value)) {
         const { settings } = value
-        const editStateFor = (propertyName) => observable({
+        const editStateFor: (propertyName: string) => EditState = (propertyName: string) => observable.object({
             value: settings[propertyName],
             inEdit: false,
             setValue: (newValue) => { settings[propertyName] = newValue }
@@ -57,7 +72,7 @@ export const Projection = observer(({ value, ancestors }) => {
                 <div>
                     <h4>Entities</h4>
                     <div className="entities">
-                        {settings["entities"].map((entity, index) => <Projection key={index} value={entity} ancestors={[ value ]} />)}
+                        {settings["entities"].map((entity: AstObject, index: number) => <Projection key={index} value={entity} ancestors={[ value ]} />)}
                     </div>
                     <button
                         tabIndex={-1}
@@ -70,7 +85,7 @@ export const Projection = observer(({ value, ancestors }) => {
                 <div>
                     <h4>Relations</h4>
                     <div className="relations">
-                        {settings["relations"].map((relation, index) => <Projection key={index} value={relation} ancestors={[ value ]}/>)}
+                        {settings["relations"].map((relation: AstObject, index: number) => <Projection key={index} value={relation} ancestors={[ value ]}/>)}
                     </div>
                     <button
                         tabIndex={-1}

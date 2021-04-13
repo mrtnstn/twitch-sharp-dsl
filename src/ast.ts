@@ -2,14 +2,31 @@
  * Everything that's specific to our particular shape of AST goes in this file.
  */
 
-import { isAstObject } from "./ast-utils"
 import { Entity } from "./concepts"
 import { Associative, Characteristic, Kernel, Reference } from "./entity-kinds"
 
+/*
+ * Let's first define some types to describe AST elements
+ */
+export interface AstBaseObject {
+    concept: string
+    settings: {[name: string]: any}
+}
 
-export const entityKind = (entity, dataModel) => {
-    const incomingRelations = dataModel.settings["relations"].filter((relation) => relation.settings["rightHand"].ref === entity)
-    const incomingCrowsFeet = incomingRelations.some((relation) => relation.settings["cardinality"].endsWith("more"))
+export interface AstObject extends AstBaseObject {
+    id: string
+}
+
+export interface AstReference {
+    ref: AstObject | null
+}
+
+export type AstElement = AstObject | AstReference | AstElement[]
+
+
+export const entityKind = (entity: AstObject, dataModel: AstObject) => {
+    const incomingRelations = dataModel.settings["relations"].filter((relation: AstObject) => relation.settings["rightHand"]?.ref === entity)
+    const incomingCrowsFeet = incomingRelations.some((relation: AstObject) => relation.settings["cardinality"].endsWith("more"))
     if (incomingCrowsFeet > 1) {
         return Associative
     }
@@ -20,27 +37,29 @@ export const entityKind = (entity, dataModel) => {
 }
 
 
-export const dataModel = (ancestors) => ancestors[ancestors.length - 1]
+export const dataModel = (ancestors: AstObject[]) => ancestors[ancestors.length - 1]
 
+export interface Issue {
+    propertyName: string
+    message: string
+}
 
-export function validate(value, ancestors) {
-    if (isAstObject(value)) {
-        const { settings } = value
-        switch (value.concept) {
-            case Entity: {
-                const issues = []
-                if (dataModel(ancestors).settings["entities"].some((otherEntity) => otherEntity !== value && otherEntity.settings["singularName"] === settings["singularName"])) {
-                    issues.push({ propertyName: "singularName", message: "Another with the same singular name already exists." })
-                }
-                if (dataModel(ancestors).settings["entities"].some((otherEntity) => otherEntity !== value && otherEntity.settings["pluralName"] === settings["pluralName"])) {
-                    issues.push({ propertyName: "pluralName", message: "Another with the same plural name already exists." })
-                }
-                return issues
+export function validate(value: AstObject, ancestors: AstObject[]): Issue[] {
+    const issues: Issue[] = []
+    const { settings } = value
+    switch (value.concept) {
+        case Entity: {
+            if (dataModel(ancestors).settings["entities"].some((otherEntity: AstObject) => otherEntity !== value && otherEntity.settings["singularName"] === settings["singularName"])) {
+                issues.push({ propertyName: "singularName", message: "Another with the same singular name already exists." })
+            }
+            if (dataModel(ancestors).settings["entities"].some((otherEntity: AstObject) => otherEntity !== value && otherEntity.settings["pluralName"] === settings["pluralName"])) {
+                issues.push({ propertyName: "pluralName", message: "Another with the same plural name already exists." })
             }
         }
     }
+    return issues
 }
 
 
-export const issuesForProperty = (issues, propertyName) => (issues && issues.filter((issue) => issue.propertyName === propertyName)) || []
+export const issuesForProperty = (issues: Issue[], propertyName: string) => (issues && issues.filter((issue) => issue.propertyName === propertyName)) || []
 

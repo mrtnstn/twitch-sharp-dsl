@@ -1,19 +1,20 @@
+import { AstObject } from "./ast"
 import {indefiniteArticleFor, withFirstUpper} from "./text-utils"
 
 
-const generateForEntity = (entity) => {
+const generateForEntity = (entity: AstObject) => {
     const { singularName, pluralName, description } = entity.settings
     return `${withFirstUpper(indefiniteArticleFor(singularName))} ${singularName} (plural: ${pluralName}) describes ${description || "..."}.`
 }
 
 
-const generateForRelation = (relation) => {
+const generateForRelation = (relation: AstObject) => {
     const { leftHand, phrase, cardinality, rightHand } = relation.settings
-    const rightHandDisplayName = rightHand && rightHand.ref.settings[cardinality.endsWith("more") ? "pluralName" : "singularName"]
-    return `Each ${leftHand.ref.settings["singularName"]} ${phrase} ${cardinality} ${rightHandDisplayName}.`
+    const rightHandDisplayName = rightHand && rightHand.ref?.settings[cardinality.endsWith("more") ? "pluralName" : "singularName"]
+    return `Each ${leftHand && leftHand.ref?.settings["singularName"]} ${phrase} ${cardinality} ${rightHandDisplayName}.`
 }
 
-export const generateCode = (ast) => {
+export const generateCode = (ast: AstObject) => {
     const { entities, relations } = ast.settings
     return `
 Data Model
@@ -21,12 +22,12 @@ Data Model
 
     Entities:
 
-${entities.map((entity) => `\t\t* ${generateForEntity(entity)}`).join("\n")}
+${entities.map((entity: AstObject) => `\t\t* ${generateForEntity(entity)}`).join("\n")}
 
 
     Relations:
 
-${relations.map((relation) => `\t\t* ${generateForRelation(relation)}`).join("\n")}
+${relations.map((relation: AstObject) => `\t\t* ${generateForRelation(relation)}`).join("\n")}
 
 `
 }

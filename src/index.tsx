@@ -3,7 +3,7 @@ import { observer } from "mobx-react"
 import React from "react"
 import { render } from "react-dom"
 
-require("./styling.css")
+import "./styling.css"
 
 
 import { asObservable } from "./ast-utils"
@@ -11,15 +11,22 @@ import { generateCode } from "./generation"
 import { dataModel } from "./initial-ast"
 import { Projection } from "./projection"
 import { storeAst, storedAstOrNull } from "./storage"
+import { AstObject } from "./ast"
 
+interface State {
+    ast?: AstObject
+    isStored?: boolean
+    isSavedIndication?: boolean
+    isResetIndication?: boolean
+}
 
-const state = observable({})
+const state: State = observable.object({})
 
 const storedAst = storedAstOrNull()
 state.ast = storedAst || asObservable(dataModel)
 state.isStored = !!storedAst
 
-const App = observer(() => <div>
+const App: React.FC = observer(() => <div>
     <Projection value={state.ast} ancestors={[]} />
     <h3>Model Persistence</h3>
     {state.isStored && <span>Data Model above is persisted in the browser's localStorage.</span>}
@@ -49,7 +56,7 @@ const App = observer(() => <div>
         >Reset data model</button> {state.isResetIndication && <span className="indication">- reset</span>}
     </div>
     <h3>Generated code</h3>
-    <pre className="code">{generateCode(state.ast)}</pre>
+    <pre className="code">{state.ast && generateCode(state.ast)}</pre>
 </div>)
 
 

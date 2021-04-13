@@ -1,11 +1,12 @@
+import { AstElement, AstObject } from "./ast"
 import { deserializeObservably, isAstObject, serialize } from "./ast-utils"
 
 
 const { localStorage } = window
 
 
-export const storedAstOrNull = () => {
-    const textContents = localStorage.ast
+export const storedAstOrNull: () => AstElement | undefined = () => {
+    const textContents: string | undefined = localStorage.ast
     if (textContents) {
         try {
             const json = JSON.parse(textContents)
@@ -20,7 +21,7 @@ export const storedAstOrNull = () => {
 }
 
 
-export const storeAst = (ast) => {
+export const storeAst: (ast: AstObject | undefined) => void = (ast) => {
     localStorage.ast = JSON.stringify(serialize(ast))
 }
 
