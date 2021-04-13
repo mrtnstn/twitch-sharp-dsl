@@ -20,7 +20,11 @@
     "shortid": "^2.2.15"
   },
   "devDependencies": {
+    "@types/react": "^17.0.3",
+    "@types/react-dom": "^17.0.3",
+    "@types/shortid": "0.0.29",
     "parcel-bundler": "^1.12.4",
+    "typescript": "^4.2.4",
     "yarpm": "^0.2.1"
   }
 }
